@@ -4,6 +4,7 @@ library(frenchdata)
 library(RSQLite)
 library(RPostgres)
 library(dbplyr)
+library(progress)
 
 start_date <- ymd("1996-01-01")
 end_date <- ymd("2020-12-31")
