@@ -22,61 +22,62 @@ wrds <- dbConnect(
 
 dsf_db <- tbl(wrds, in_schema("crsp", "dsf"))
 
-factors_ff3_daily <- tbl(db, "factors_ff3_daily") |>
-  collect()
-
-permnos <- tbl(db, "crsp_monthly") |>
-  distinct(permno) |>
-  pull()
-
-chunk_size <- 100
-num_chunks <- ceiling(length(permnos) / chunk_size)
+# Create a sequence of dates from start_date to end_date by month
+date_seq <- seq(from = start_date, to = end_date, by = "month")
 
 pb <- progress_bar$new(
   format = "[:bar] :percent eta: :eta",
-  total = num_chunks
+  total = length(date_seq) - 1
 )
 
-for (j in 1:num_chunks) {
-  # Select the permnos for this chunk
-  permno_chunk <- permnos[((j - 1) * 10 + 1):min(j * 10, length(permnos))]
-
-  # Process all permnos in the chunk at once
+for (i in 1:(length(date_seq) - 1)) {
+  # Define the start and end date for each chunk
+  chunk_start_date <- date_seq[i]
+  chunk_end_date <- date_seq[i + 1]
+  
+  # Process all permnos within the date range
   crsp_daily_sub <- dsf_db |>
-    filter(permno %in% permno_chunk &
-      date >= start_date & date <= end_date) |>
+    filter(permno %in% permnos &
+             date >= chunk_start_date & date < chunk_end_date) |>
     select(permno, date, ret) |>
     collect() |>
     drop_na()
-
+  
   if (nrow(crsp_daily_sub) > 0) {
     crsp_daily_sub <- crsp_daily_sub |>
       mutate(month = floor_date(date, "month")) |>
       left_join(factors_ff3_daily |>
-        select(date, rf), by = "date") |>
+                  select(date, rf), by = "date") |>
       mutate(
         ret_excess = ret - rf,
         ret_excess = pmax(ret_excess, -1)
       ) |>
       select(permno, date, month, ret, ret_excess)
-
+    
     dbWriteTable(db,
-      "crsp_daily",
-      value = crsp_daily_sub,
-      overwrite = ifelse(j == 1, TRUE, FALSE),
-      append = ifelse(j != 1, TRUE, FALSE)
+                 "crsp_daily",
+                 value = crsp_daily_sub,
+                 overwrite = ifelse(i == 1, TRUE, FALSE),
+                 append = ifelse(i != 1, TRUE, FALSE)
     )
   }
-
+  
   pb$tick()
 }
+
+dbDisconnect(wrds)
 
 # Summary Stats -----------------------------------------------------------
 
 source('r/utils.R')
 
+crsp_daily <- tbl(db, "crsp_daily") |>
+  select(permno, date, month, ret_excess) |>
+  collect() |>
+  drop_na()
+
 crsp_daily |>
-  sum_stats(c("ret", "ret_excess"))
+  sum_stats(c("ret_excess"))
 
 # Trend of N along time-series
 crsp_daily |>

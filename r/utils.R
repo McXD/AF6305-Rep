@@ -1,12 +1,14 @@
 library(moments)
 
 sum_stats <- function(df, cols) {
-  # Initialize an empty data frame to store results
   results <- data.frame()
   
   for (col in cols) {
-    result <- df |>
-      group_by(date) |>
+    # remove NA for this column
+    df_na <- df |> filter(!is.na(!!rlang::sym(col)))
+    
+    result <- df_na |>
+      group_by(date) |> # for a cross-section
       summarise(
         mean = mean(!!rlang::sym(col)),
         sd = sd(!!rlang::sym(col)),
@@ -19,7 +21,7 @@ sum_stats <- function(df, cols) {
         `75%` = quantile(!!rlang::sym(col), 0.75),
         `95%` = quantile(!!rlang::sym(col), 0.95),
         max = max(!!rlang::sym(col)),
-        n = n()
+        n = sum(!is.na(!!rlang::sym(col)))
       ) |>
       summarise(
         mean = mean(mean),
