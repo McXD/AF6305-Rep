@@ -59,7 +59,7 @@ crsp_monthly %>%
       group_by(date) %>%
       summarise(n = n(), exchange = "Total")
   ) %>%
-  mutate(exchange = factor(exchange, levels = c("Total", "NYSE", "AMEX", "NASDAQ", "Other"))) %>% 
+  mutate(exchange = factor(exchange, levels = c("Total", "NYSE", "AMEX", "NASDAQ", "Other"))) %>%
   ggplot(aes(x = date, y = n, linetype = exchange)) +
   geom_line() +
   labs(
@@ -70,9 +70,9 @@ crsp_monthly %>%
   theme(legend.position = c(0.85, 0.78))
 
 ggsave(
-    "report/figs/stock_exchange_composition.png",
-    width = 8, height = 4, units = "in", dpi = 300
-  )
+  "report/figs/stock_exchange_composition.png",
+  width = 8, height = 4, units = "in", dpi = 300
+)
 
 # Value of Stock in Exchanges --------------------------------------------
 
@@ -85,7 +85,7 @@ crsp_monthly %>%
       group_by(date) %>%
       summarise(mktcap = sum(mktcap) / 1000, exchange = "Total")
   ) %>%
-  mutate(exchange = factor(exchange, levels = c("Total", "NYSE", "AMEX", "NASDAQ", "Other"))) %>% 
+  mutate(exchange = factor(exchange, levels = c("Total", "NYSE", "AMEX", "NASDAQ", "Other"))) %>%
   ggplot(aes(x = date, y = mktcap, linetype = exchange)) +
   geom_line() +
   labs(
@@ -96,9 +96,9 @@ crsp_monthly %>%
   theme(legend.position = c(0.1, 0.78))
 
 ggsave(
-    "report/figs/value_of_stock_in_exchanges.png",
-    width = 8, height = 4, units = "in", dpi = 300
-  )
+  "report/figs/value_of_stock_in_exchanges.png",
+  width = 8, height = 4, units = "in", dpi = 300
+)
 
 # Summary of Stock Returns ------------------------------------------------
 source("r/utils.R")
@@ -107,8 +107,8 @@ crsp_daily <- tbl(db, "crsp_daily") |>
   collect() |>
   drop_na()
 
-ss_m <- crsp_monthly %>% 
-  sum_stats("ret_excess") %>% 
+ss_m <- crsp_monthly %>%
+  sum_stats("ret_excess") %>%
   mutate(var = "r_m")
 
 ss_d <- crsp_daily %>%
