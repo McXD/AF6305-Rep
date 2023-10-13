@@ -2,11 +2,11 @@ library(moments)
 
 sum_stats <- function(df, cols) {
   results <- data.frame()
-  
+
   for (col in cols) {
     # remove NA for this column
     df_na <- df |> filter(!is.na(!!rlang::sym(col)))
-    
+
     result <- df_na |>
       group_by(date) |> # for a cross-section
       summarise(
@@ -37,12 +37,11 @@ sum_stats <- function(df, cols) {
         max = mean(max),
         n = floor(mean(n))
       )
-    
-    result$var <- col  # Add the column name to the result
+
+    result$var <- col # Add the column name to the result
     result <- result |> select(var, everything()) # Move the column name to the front
-    results <- rbind(results, result)  # Append the result to the results data frame
-    
+    results <- rbind(results, result) # Append the result to the results data frame
   }
-  
+
   return(results)
 }

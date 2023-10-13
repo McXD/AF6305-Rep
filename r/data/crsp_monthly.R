@@ -99,7 +99,7 @@ crsp_monthly <- crsp_monthly |>
     ret_excess = pmax(ret_excess, -1)
   ) |>
   select(-ret_adj, -rf)
-  # na.omit() # TODO: better treatment?
+# na.omit() # TODO: better treatment?
 
 # Write to SQLite ---------------------------------------------------------
 
@@ -107,7 +107,7 @@ dbWriteTable(db, "crsp_monthly", crsp_monthly, overwrite = TRUE)
 
 # Summary Stats -----------------------------------------------------------
 
-source('r/utils.R')
+source("r/utils.R")
 
 crsp_monthly |>
   na.omit() |>
