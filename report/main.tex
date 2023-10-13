@@ -1,0 +1,45 @@
+\documentclass{article}
+
+\usepackage[left=1.5cm, right=2cm]{geometry}
+\usepackage{amsmath}
+\usepackage{dcolumn}
+\usepackage{graphicx}
+
+\author{Yunlin FENG}
+\title{AF6305 Individual Project}
+
+\begin{document}
+\maketitle
+
+\section{Data}
+
+\begin{itemize}
+  \item Database access
+  \item Stock price
+  \item Delisting adjustment for monthly return
+  \item Why no adjustment for daily return
+  \item Dealing with NA values in return
+\end{itemize}
+
+\pagebreak
+
+\begin{figure}[htbp]
+  \centering
+  \caption{Number of Stocks in CRSP Sample by Exchange}
+  \includegraphics[width=0.8\textwidth]{figs/stock_exchange_composition.png}
+  \label{fig:stock_exchange_composition}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \caption{Value of Stocks in CRSP Sample by Exchange}
+  \includegraphics[width=0.8\textwidth]{figs/value_of_stock_in_exchanges.png}
+  \label{fig:value_of_stock_in_exchanges}
+\end{figure}
+
+\input{tabs/return_summary.tex}
+\input{tabs/beta_summary_stats.tex}
+\input{tabs/beta_cor_mat.tex}
+\input{tabs/beta_persistence.tex}
+
+\end{document}

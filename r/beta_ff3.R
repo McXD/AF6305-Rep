@@ -222,7 +222,7 @@ beta_stats %>%
     label = "tab:beta_summary_stats"
   ) %>%
   as.character() %>%
-  cat(file = "tex/beta_summary_stats.tex", sep = "\n")
+  cat(file = "report/tabs/beta_summary_stats.tex", sep = "\n")
 
 diag(beta_cor_mat) <- NA
 beta_cor_mat %>%
@@ -236,7 +236,7 @@ beta_cor_mat %>%
     label = "tab:beta_cor_mat"
   ) %>%
   as.character() %>%
-  cat(file = "tex/beta_cor_mat.tex", sep = "\n")
+  cat(file = "report/tabs/beta_cor_mat.tex", sep = "\n")
 
 persistences %>%
   mutate_if(is.numeric, round, 2) %>%
@@ -253,4 +253,4 @@ persistences %>%
     covariate.labels = c("Lag", "$\\beta^{1M}$", "$\\beta^{3M}$", "$\\beta^{6M}$", "$\\beta^{12M}$", "$\\beta^{24M}$")
   ) %>%
   as.character() %>%
-  cat(file = "tex/beta_persistence.tex", sep = "\n")
+  cat(file = "report/tabs/beta_persistence.tex", sep = "\n")

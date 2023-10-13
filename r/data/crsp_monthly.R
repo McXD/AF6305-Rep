@@ -59,6 +59,7 @@ crsp_monthly <- msf_db |>
     shrout = shrout * 1000
   )
 
+dbDisconnect(wrds)
 
 # Calc Market Cap ---------------------------------------------------------
 
