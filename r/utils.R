@@ -45,3 +45,34 @@ sum_stats <- function(df, cols) {
 
   return(results)
 }
+
+cor_stats <- function(data, cols) {
+  # Split the data by month
+  data_by_month <- data %>% mutate(month = month(date)) %>% 
+    split(.$month)
+  
+  # Initialize empty list to store correlation matrices
+  cor_matrices <- list()
+  
+  # Loop over each month
+  for(i in 1:length(data_by_month)) {
+    # Select relevant columns and drop NA values
+    data_month <- data_by_month[[i]] %>% select(all_of(cols)) %>% na.omit()
+    
+    # Calculate Spearman and Pearson correlations
+    spearman <- cor(data_month, method = "spearman")
+    pearson <- cor(data_month, method = "pearson")
+    
+    # Combine into one matrix, with Spearman above diagonal and Pearson below
+    cor_matrix <- spearman
+    cor_matrix[lower.tri(cor_matrix)] <- pearson[lower.tri(pearson)]
+    
+    # Store in list
+    cor_matrices[[i]] <- cor_matrix
+  }
+  
+  # Calculate time-series average of the matrices
+  avg_cor_matrix <- Reduce("+", cor_matrices) / length(cor_matrices)
+  
+  return(avg_cor_matrix)
+}

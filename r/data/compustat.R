@@ -144,8 +144,8 @@ crsp_monthly |>
     .groups = "drop"
   ) |>
   ggplot(aes(
-    x = year, 
-    y = share, 
+    x = year,
+    y = share,
     color = exchange,
     linetype = exchange
   )) +
