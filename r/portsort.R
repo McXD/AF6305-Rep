@@ -26,15 +26,17 @@ factors_ff3_monthly <- tbl(db, "factors_ff3_monthly") |>
   collect()
 
 data <- crsp_monthly |>
-  inner_join(factors, by = c("permno", "month")) |>
-  drop_na()
+  inner_join(factors, by = c("permno", "month"))
 
-# Add lag variables
+# Lead the return
 data <- data |>
   left_join(
-    data |> select(permno, month, size_lag = size, bm_lag = bm, mom_lag = mom, mktcap_lag = mktcap) |> mutate(month = month %m+% months(1)),
+    data |> select(permno, month, ret_excess_lead = ret_excess) |> mutate(month = month %m-% months(1)),
     by = c("permno", "month")
-  )
+  ) |>
+  select(-ret_excess) |>
+  rename(ret_excess = ret_excess_lead) |>
+  drop_na()
 
 # Functions ---------------------------------------------------------------
 
@@ -69,63 +71,77 @@ assign_portfolio <- function(
   return(assigned_portfolios)
 }
 
+# Sort a cross-sectional data set into portfolios and calculate portfolio returns
+# Return: data frame with portfolio returns (ew and vw)
 single_sort <- function(
-    data, # panel data
+    cs,
     sort_variable,
     n_portfolios,
-    sort_data = data,
-    probs = seq(0, 1, length.out = n_portfolios + 1)
+    sort_data = cs
 ){
-  portfolios <- data |>
+  portfolios <- cs |>
     drop_na() |>
-    group_by(month) |>
     mutate(
       portfolio = assign_portfolio(
         data = pick(everything()),
         sort_variable = {{ sort_variable }},
         n_portfolios = n_portfolios,
-        sort_data = pick(everything()) %>% filter(exchcd %in% c(1, 31)),
-        probs = probs
+        sort_data = pick(everything()) %>% filter(exchcd %in% c(1, 31))
       ) %>%
         as.factor()
     ) |>
-    group_by(portfolio, month) |> # cross-sectional 
+    group_by(portfolio) |>
     summarize(
       ew_ret = mean(ret_excess),
-      vw_ret = weighted.mean(ret_excess, mktcap_lag),
-      .groups = "drop"
-    ) |>
-    group_by(portfolio) |> # time-series average
-    summarize(
-      avg_ew_ret = mean(ew_ret),
-      ew_tstat = {
-        lm_model <- lm(ew_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
-      avg_vw_ret = mean(vw_ret),
-      vw_tstat = {
-        lm_model <- lm(vw_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
+      vw_ret = weighted.mean(ret_excess, mktcap),
       .groups = "drop"
     )
   
   return (portfolios)
 }
 
-indepedent_double_sort <- function(
-    data, # panel data
+newey_west_t_stat <- function(ts, colname) {
+  model <- lm(ts[[colname]] ~ 1)  
+  summary_model <- summary(model, vcov = NeweyWest(model))
+  summary_model$coefficients["(Intercept)", "t value"]
+}
+
+single_sort_panel <- function(
+    panel, # panel data
+    sort_variable,
+    n_portfolios,
+    sort_data = data
+) {
+  panel |>
+    nest(.by = month, .key = "cs") |>
+    mutate(
+      portfolio_ret = map(cs, single_sort, {{ sort_variable }}, n_portfolios, sort_data)
+    ) |>
+    unnest(portfolio_ret) |>
+    nest(.by = portfolio, .key = "ts") |>
+    mutate(
+      avg_ew_ret = map_dbl(ts, ~ mean(.x$ew_ret)),
+      ew_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "ew_ret")),
+      avg_vw_ret = map_dbl(ts, ~ mean(.x$vw_ret)),
+      vw_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "vw_ret"))
+    ) |>
+    select(-ts)
+}
+
+single_sort_panel(data, size, 10)
+single_sort_panel(data, bm, 10)
+single_sort_panel(data, mom, 10)
+
+independent_double_sort <- function(
+    cs,
     sort_variable_1,
     sort_variable_2,
     n_portfolios_1,
     n_portfolios_2 = n_portfolios_1,
     sort_data = data
 ){
-  portfolios <- data |>
+  portfolios <- cs |>
     drop_na() |>
-    group_by(month) |>
     mutate(
       portfolio_1 = assign_portfolio(
         data = pick(everything()),
@@ -142,43 +158,50 @@ indepedent_double_sort <- function(
       ) %>%
         as.factor()
     ) |>
-    group_by(portfolio_1, portfolio_2, month) |> # cross-sectional 
+    group_by(portfolio_1, portfolio_2) |>
     summarize(
       ew_ret = mean(ret_excess),
-      vw_ret = weighted.mean(ret_excess, mktcap_lag),
-      .groups = "drop"
-    ) |>
-    group_by(portfolio_1, portfolio_2) |> # time-series average
-    summarize(
-      avg_ew_ret = mean(ew_ret),
-      ew_tstat = {
-        lm_model <- lm(ew_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
-      avg_vw_ret = mean(vw_ret),
-      vw_tstat = {
-        lm_model <- lm(vw_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
+      vw_ret = weighted.mean(ret_excess, mktcap),
       .groups = "drop"
     )
   
   return (portfolios)
 }
 
+independent_double_sort_panel <- function(
+    panel, # panel data
+    sort_variable_1,
+    sort_variable_2,
+    n_portfolios_1,
+    n_portfolios_2 = n_portfolios_1,
+    sort_data = data
+) {
+  panel |>
+    nest(.by = month, .key = "cs") |>
+    mutate(
+      portfolio_ret = map(cs, independent_double_sort, {{ sort_variable_1 }}, {{ sort_variable_2 }}, n_portfolios_1, n_portfolios_2, sort_data)
+    ) |>
+    unnest(portfolio_ret) |>
+    nest(.by = c(portfolio_1, portfolio_2), .key = "ts") |>
+    mutate(
+      avg_ew_ret = map_dbl(ts, ~ mean(.x$ew_ret)),
+      ew_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "ew_ret")),
+      avg_vw_ret = map_dbl(ts, ~ mean(.x$vw_ret)),
+      vw_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "vw_ret"))
+    ) |>
+    select(-ts)
+}
+
 dependent_double_sort <- function(
-    data, # panel data
+    cs,
     sort_variable_1,
     sort_variable_2,
     n_portfolios_1,
     n_portfolios_2 = n_portfolios_1,
     sort_data = data
 ){
-  portfolios <- data |>
+  portfolios <- cs |>
     drop_na() |>
-    group_by(month) |>
     mutate(
       portfolio_1 = assign_portfolio(
         data = pick(everything()),
@@ -199,35 +222,42 @@ dependent_double_sort <- function(
         as.factor()
     ) |>
     ungroup() |>
-    group_by(portfolio_1, portfolio_2, month) |> # cross-sectional 
+    group_by(portfolio_1, portfolio_2) |>
     summarize(
       ew_ret = mean(ret_excess),
-      vw_ret = weighted.mean(ret_excess, mktcap_lag),
-      .groups = "drop"
-    ) |>
-    group_by(portfolio_1, portfolio_2) |> # time-series average
-    summarize(
-      avg_ew_ret = mean(ew_ret),
-      ew_tstat = {
-        lm_model <- lm(ew_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
-      avg_vw_ret = mean(vw_ret),
-      vw_tstat = {
-        lm_model <- lm(vw_ret ~ 1)
-        summary_model <- summary(lm_model, vcov = NeweyWest(lm_model))
-        summary_model$coefficients["(Intercept)", "t value"]
-      },
+      vw_ret = weighted.mean(ret_excess, mktcap),
       .groups = "drop"
     )
   
   return (portfolios)
 }
 
-# Single Sort
-single_sort(data, size_lag, 10)
-single_sort(data, bm_lag, 10)
+dependent_double_sort_panel <- function(
+    panel, # panel data
+    sort_variable_1,
+    sort_variable_2,
+    n_portfolios_1,
+    n_portfolios_2 = n_portfolios_1,
+    sort_data = data
+) {
+  panel |>
+    nest(.by = month, .key = "cs") |>
+    mutate(
+      portfolio_ret = map(cs, dependent_double_sort, {{ sort_variable_1 }}, {{ sort_variable_2 }}, n_portfolios_1, n_portfolios_2, sort_data)
+    ) |>
+    unnest(portfolio_ret) |>
+    nest(.by = c(portfolio_1, portfolio_2), .key = "ts") |>
+    mutate(
+      avg_ew_ret = map_dbl(ts, ~ mean(.x$ew_ret)),
+      ew_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "ew_ret")),
+      avg_vw_ret = map_dbl(ts, ~ mean(.x$vw_ret)),
+      vw_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "vw_ret"))
+    ) |>
+    select(-ts)
+}
+
+independent_double_sort_panel(data, size, bm, n_portfolios_1 =5, n_portfolios_2 = 5)
+dependent_double_sort_panel(data, size, bm, n_portfolios_1 =5, n_portfolios_2 = 5)
 
 mom_data <- data |>
   left_join(
@@ -235,7 +265,7 @@ mom_data <- data |>
       filter(exchcd %in% c(1, 31)) |>
       group_by(month) |>
       summarize(
-        size_10th = quantile(size_lag, probs = 0.1, na.rm = TRUE),
+        size_10th = quantile(size, probs = 0.1, na.rm = TRUE),
         .groups = "drop"
       ), # NYSE breakpoints
     by = "month"
@@ -243,51 +273,7 @@ mom_data <- data |>
   filter(size >= size_10th) |>
   filter(prc > 5) |>
   select(-size_10th)
-single_sort(mom_data, mom_lag, 5)
 
-# Independent Double Sort
-indepedent_double_sort(data, size_lag, bm_lag, n_portfolios_1 =5, n_portfolios_2 = 5)
-dependent_double_sort(data, size_lag, bm_lag, n_portfolios_1 =5, n_portfolios_2 = 5)
-
-# Size --------------------------------------------------------------------
-
-size_portfolios <- data |>
-  drop_na() |>
-  group_by(month) |>
-  mutate(
-    portfolio = assign_portfolio(
-      data = cur_data(),
-      sorting_variable = size_lag,
-      n_portfolios = 10,
-      sort_data = cur_data() %>% filter(exchcd %in% c(1, 31))
-    ) %>%
-      as.factor()
-  ) |>
-  group_by(portfolio, month) |>
-  summarize(
-    ret_excess = mean(ret_excess),
-    .groups = "drop"
-  ) |>
-  left_join(
-    factors_ff3_monthly,
-    by = "month"
-  )
-
-size_portfolios_summary <- size_portfolios |>
-  nest(data = c(month, ret_excess, mkt_excess)) |>
-  mutate(estimates = map(
-    data, ~ tidy(lm(ret_excess ~ 1 + mkt_excess, data = .x))
-  )) |>
-  unnest(estimates) |>
-  select(portfolio, term, estimate) |>
-  pivot_wider(names_from = term, values_from = estimate) |>
-  rename(alpha = `(Intercept)`, beta = mkt_excess) |>
-  left_join(
-    size_portfolios |>
-      group_by(portfolio) |>
-      summarize(
-        ret_excess = mean(ret_excess),
-        .groups = "drop"
-      ),
-    by = "portfolio"
-  )
+single_sort_panel(mom_data, mom, 10)
+independent_double_sort_panel(mom_data, size, mom, 5, 5)
+dependent_double_sort_panel(mom_data, size, mom, 5, 5)
