@@ -1,11 +1,4 @@
-source("r/data/common.R")
-
-# SQLite ------------------------------------------------------------------
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
+source("r/lib.R")
 
 # FF [Monthly] ------------------------------------------------------------
 factors_ff3_monthly_raw <- download_french_data("Fama/French 3 Factors")

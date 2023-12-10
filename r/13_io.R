@@ -1,26 +1,25 @@
-# This script test linking tr_13f with crsp_monthly
+# This script:
+# 1. Source the data from tr_13f.csv, downloaded from WRDS
+# 2. Construct IO measure (Table: 'crsp_io')
 
-library(tidyverse)
-library(slider)
-library(furrr)
-library(RSQLite)
-library(progressr)
-library(knitr)
-library(kableExtra)
-library(stargazer)
+# This script source and clean data from csv file downloaded from WRDS.
+# I only found tr_13f schema and s34 tables in the database. But there are
+# additional institutional holding columns and I don't where they come from.
+# Hence I didn't use Postgres to download data.
 
-# Load data ---------------------------------------------------------------
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
+source("r/lib.R")
 
-crsp_monthly <- tbl(db, "crsp_monthly") |>
-  select(permno, cusip, date, month, ret, ret_excess) |>
-  collect()
+# Read CSV
+tr_13f <- read_csv("data/tr_13f.csv") |>
+  mutate(month = floor_date(rdate, "month")) |>
+  select(
+    cusip,
+    month,
+    inst_own = InstOwn_Perc
+  )
 
-tr_13f <- tbl(db, "tr_13f") |> collect()
+# Save
+dbWriteTable(db, "tr_13f", tr_13f, overwrite = TRUE)
 
 data <- crsp_monthly |>
   left_join(tr_13f, by = c("cusip", "month")) |>

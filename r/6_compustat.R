@@ -1,15 +1,10 @@
-source("r/data/common.R")
+# This script
+# 1. download compustat (Table: 'compustat')
+# 2. add a compustat link column to crsp_monthly (Table: 'crsp_monthly')
 
-wrds <- dbConnect(
-  Postgres(),
-  host = "wrds-pgdata.wharton.upenn.edu",
-  dbname = "wrds",
-  port = 9737,
-  sslmode = "require",
-  user = Sys.getenv("WRDS_USERNAME"),
-  password = Sys.getenv("WRDS_PASSWORD")
-)
+source("r/lib.R")
 
+wrds <- wrds_connect()
 funda_db <- tbl(wrds, in_schema("comp", "funda"))
 
 compustat <- funda_db |>
@@ -69,12 +64,6 @@ compustat <- compustat |>
     inv = if_else(at_lag <= 0, as.numeric(NA), inv)
   )
 
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
-
 dbWriteTable(
   db,
   "compustat",
@@ -82,7 +71,7 @@ dbWriteTable(
   overwrite = TRUE
 )
 
-# Merge with CRSP ---------------------------------------------------------
+# Add COMPUSTAT-link to CRSP ---------------------------------------------------------
 
 ccmxpf_linktable_db <- tbl(
   wrds,
@@ -118,6 +107,7 @@ dbWriteTable(
   overwrite = TRUE
 )
 
+dbDisconnect(wrds)
 
 # EDA ---------------------------------------------------------------------
 

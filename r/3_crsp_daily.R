@@ -1,24 +1,12 @@
-source("r/data/common.R")
+# This script
+# 1. Download CRSP daily data
+# 2. Table: 'crsp_daily'
 
-# SQLite Connection -------------------------------------------------------
-
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
+source("r/lib.R")
 
 # Download ----------------------------------------------------------------
 
-wrds <- dbConnect(
-  Postgres(),
-  host = "wrds-pgdata.wharton.upenn.edu",
-  dbname = "wrds",
-  port = 9737,
-  sslmode = "require",
-  user = Sys.getenv("WRDS_USERNAME"),
-  password = Sys.getenv("WRDS_PASSWORD")
-)
+wrds <- wrds_connect()
 
 dsf_db <- tbl(wrds, in_schema("crsp", "dsf"))
 
@@ -52,7 +40,8 @@ for (j in 1:num_chunks) {
       cusip, # to link with other databases, such as TR
       date,
       ret,
-      vol # volume, to construct Amihud illiquidity
+      vol, # volume, to construct Amihud illiquidity
+      prc
     ) |>
     collect() |>
     drop_na()
@@ -73,7 +62,8 @@ for (j in 1:num_chunks) {
         month, 
         ret, 
         ret_excess, 
-        vol
+        vol,
+        prc
       )
 
     dbWriteTable(db,
@@ -90,8 +80,6 @@ for (j in 1:num_chunks) {
 dbDisconnect(wrds)
 
 # Summary Stats -----------------------------------------------------------
-
-source("r/utils.R")
 
 crsp_daily <- tbl(db, "crsp_daily") |>
   select(permno, date, month, ret_excess) |>

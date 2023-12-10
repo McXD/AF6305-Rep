@@ -1,22 +1,12 @@
-library(tidyverse)
-library(slider)
-library(furrr)
-library(RSQLite)
-library(progressr)
-library(knitr)
-library(kableExtra)
-library(stargazer)
+# This script
+# 1. Calculate Amihud Illiquidity (Table: 'amihud_illiq')
+
+source("r/lib.R")
 
 # Load data ---------------------------------------------------------------
 
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
-
 crsp_daily <- tbl(db, "crsp_daily") |>
-  select(permno, date, month, ret, vol) |>
+  select(permno, date, month, ret, vol, prc, exchcd) |>
   collect() |>
   drop_na()
 
@@ -40,10 +30,10 @@ crsp_daily <- crsp_daily |>
 # take monthly average
 amihud_illiq <- crsp_daily |>
   filter(vol != 0) |>
-  mutate(amihud_illiq = abs(ret) / vol) |>
+  mutate(amihud_illiq = abs(ret) / vol * prc) |>
   group_by(permno, month) |>
   summarize(
-    amihud_illiq = mean(amihud_illiq, na.rm = TRUE),
+    amihud_illiq = mean(amihud_illiq, na.rm = TRUE) * 1000000,
     .groups = "drop"
   ) |>
   select(permno, month, amihud_illiq)

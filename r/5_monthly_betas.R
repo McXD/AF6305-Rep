@@ -1,19 +1,10 @@
-library(tidyverse)
-library(slider)
-library(furrr)
-library(RSQLite)
-library(progressr)
+source("r/lib.R")
+
 library(knitr)
 library(kableExtra)
 library(stargazer)
 
 # Load data ---------------------------------------------------------------
-
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
 
 crsp_daily <- tbl(db, "crsp_daily") |>
   select(permno, date, month, ret_excess) |>
@@ -82,8 +73,6 @@ examples_beta |>
   )
 
 # Run ---------------------------------------------------------------------
-library(dplyr)
-library(pbapply)
 
 panel_betas <- panel %>%
   mutate(betas = pblapply(tsm, function(x) {

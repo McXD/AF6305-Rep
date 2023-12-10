@@ -1,24 +1,13 @@
-source("r/data/common.R")
+# This script:
+# 1. Download CRSP monthly data
+# 2. Clean and derive fields
+# 3. Table: 'crsp_monthly'
 
-# SQLite Connection -------------------------------------------------------
-
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
+source("r/lib.R")
 
 # Download data -----------------------------------------------------------
 
-wrds <- dbConnect(
-  Postgres(),
-  host = "wrds-pgdata.wharton.upenn.edu",
-  dbname = "wrds",
-  port = 9737,
-  sslmode = "require",
-  user = Sys.getenv("WRDS_USERNAME"),
-  password = Sys.getenv("WRDS_PASSWORD")
-)
+wrds <- wrds_connect()
 
 msf_db <- tbl(wrds, in_schema("crsp", "msf"))
 msenames_db <- tbl(wrds, in_schema("crsp", "msenames"))

@@ -1,15 +1,13 @@
-library(tidyverse)
-library(RSQLite)
-library(slider)
+# This script:
+# 1. Calculate Size and BM measure from COMPUSTAT (Table: 'compustat')
+# 2. Calculate MOM measure from monthly CRSP (Table: 'crsp_monthly')
+# 3. Link them together (Table: 'factors_size_bm_mom')
+#
+# Depend on the link step (Path: 'data/compustat.R')
 
+source("r/lib.R")
 
 # Load Data ---------------------------------------------------------------
-
-db <- dbConnect(
-  SQLite(),
-  "data/main.sqlite",
-  extended_types = TRUE
-)
 
 crsp_monthly <- tbl(db, "crsp_monthly") |>
   select(permno, month, mktcap, ret, gvkey) |>
