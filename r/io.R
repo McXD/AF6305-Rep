@@ -44,7 +44,9 @@ t |>
     prop_missing = mean(prop_missing)
   )
 
-t <- t |> drop_na()
+t <- t|>
+  drop_na() |>
+  select(permno, month, inst_own)
 
 # Save
 dbWriteTable(db, "crsp_io", t, overwrite = TRUE)
