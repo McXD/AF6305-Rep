@@ -43,6 +43,7 @@ crsp_monthly <- msf_db |>
   ) |>
   select(
     permno, # Security identifier
+    cusip, # To link with TR
     date, # Date of the observation
     month, # Month of the observation
     ret, # Return

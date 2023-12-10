@@ -30,7 +30,7 @@ permnos <- tbl(db, "crsp_monthly") |>
   pull()
 
 # Determine the number of chunks
-chunk_size <- 200
+chunk_size <- 600
 num_chunks <- ceiling(length(permnos) / chunk_size)
 
 # Progress bar using progress package
@@ -47,7 +47,13 @@ for (j in 1:num_chunks) {
   crsp_daily_sub <- dsf_db |>
     filter(permno %in% permno_chunk &
       date >= start_date & date <= end_date) |>
-    select(permno, date, ret) |>
+    select(
+      permno,
+      cusip, # to link with other databases, such as TR
+      date,
+      ret,
+      vol # volume, to construct Amihud illiquidity
+    ) |>
     collect() |>
     drop_na()
 
@@ -60,7 +66,15 @@ for (j in 1:num_chunks) {
         ret_excess = ret - rf,
         ret_excess = pmax(ret_excess, -1)
       ) |>
-      select(permno, date, month, ret, ret_excess)
+      select( # Final columns
+        permno,
+        cusip,
+        date,
+        month, 
+        ret, 
+        ret_excess, 
+        vol
+      )
 
     dbWriteTable(db,
       "crsp_daily",

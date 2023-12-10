@@ -121,8 +121,10 @@ single_sort_panel <- function(
     nest(.by = portfolio, .key = "ts") |>
     mutate(
       avg_ew_ret = map_dbl(ts, ~ mean(.x$ew_ret)),
+      var_ew_ret = map_dbl(ts, ~ var(.x$ew_ret)),
       ew_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "ew_ret")),
       avg_vw_ret = map_dbl(ts, ~ mean(.x$vw_ret)),
+      var_vw_ret = map_dbl(ts, ~ var(.x$vw_ret)),
       vw_tstat = map_dbl(ts, ~ newey_west_t_stat(.x, "vw_ret"))
     ) |>
     select(-ts)
