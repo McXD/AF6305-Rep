@@ -8,7 +8,6 @@ library(frenchdata)
 library(RSQLite)
 library(RPostgres)
 library(progress)
-library(progressr)
 library(moments)
 library(slider)
 library(pbapply)
@@ -56,8 +55,11 @@ sum_stats <- function(df, cols) {
   results <- data.frame()
   
   for (col in cols) {
-    # remove NA for this column
-    df_na <- df |> filter(!is.na(!!rlang::sym(col)))
+    # remove NA, NaN, Inf for this column
+    df_na <- df %>%
+      filter(!is.na(!!rlang::sym(col))) %>%
+      filter(!is.nan(!!rlang::sym(col))) %>%
+      filter(!is.infinite(!!rlang::sym(col)))
     
     result <- df_na |>
       group_by(date) |> # for a cross-section

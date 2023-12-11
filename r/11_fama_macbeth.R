@@ -9,7 +9,8 @@ crsp_monthly <- tbl(db, "crsp_monthly") |>
 
 factors <- tbl(db, "factors_size_bm_mom") |>
   select(permno, month, size, bm, mom) |>
-  collect()
+  collect() |>
+  mutate(size = log(size))
 
 betas <- tbl(db, "betas_ff3") |>
   select(permno, month, ivol = res_std) |>

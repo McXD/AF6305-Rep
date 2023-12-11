@@ -18,7 +18,8 @@ crsp_disp <- tbl(db, "crsp_disp") |>
   collect()
 
 size_bm_mom <- tbl(db, "factors_size_bm_mom") |>
-  collect()
+  collect() |>
+  mutate(size = log(size))
 
 t <- crsp_monthly |>
   select(permno, month, ret) |>

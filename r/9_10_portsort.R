@@ -39,10 +39,9 @@ data <- data %>%
 assign_portfolio <- function(
     data,
     sort_variable,
-    n_portfolios,
-    sort_data = data
+    n_portfolios
 ) {
-  breakpoints <- sort_data %>%
+  breakpoints <- data %>%
     pull({{ sort_variable }}) %>%
     quantile(
       probs = seq(0, 1, length.out = n_portfolios + 1),
@@ -70,8 +69,7 @@ assign_portfolio <- function(
 single_sort <- function(
     data,
     sort_variable,
-    n_portfolios,
-    sort_data = data
+    n_portfolios
 ){
   portfolios <- data %>%
     drop_na() %>%
@@ -79,8 +77,7 @@ single_sort <- function(
       portfolio = assign_portfolio(
         data = pick(everything()),
         sort_variable = {{ sort_variable }},
-        n_portfolios = n_portfolios,
-        sort_data = pick(everything()) %>% filter(exchcd %in% c(1, 31))
+        n_portfolios = n_portfolios
       ) %>%
         as.factor()
     ) %>%
@@ -112,13 +109,12 @@ newey_west_t_stat <- function(ts, colname) {
 single_sort_panel <- function(
     panel, # panel data
     sort_variable,
-    n_portfolios,
-    sort_data = data
+    n_portfolios
 ) {
   panel %>%
     nest(.by = month, .key = "cs") %>%
     mutate(
-      portfolio_ret = map(cs, single_sort, {{ sort_variable }}, n_portfolios, sort_data)
+      portfolio_ret = map(cs, single_sort, {{ sort_variable }}, n_portfolios)
     ) %>%
     unnest(portfolio_ret) %>%
     nest(.by = portfolio, .key = "ts") %>%
@@ -139,7 +135,6 @@ double_sort <- function(
     sort_variable_2,
     n_portfolios_1,
     n_portfolios_2 = n_portfolios_1,
-    sort_data = data,
     is_dependent = TRUE
 ){
   portfolios <- cs %>%
@@ -148,8 +143,7 @@ double_sort <- function(
       portfolio_1 = assign_portfolio(
         data = pick(everything()),
         sort_variable = {{ sort_variable_1 }},
-        n_portfolios = n_portfolios_1,
-        sort_data = pick(everything()) %>% filter(exchcd %in% c(1, 31))
+        n_portfolios = n_portfolios_1
       ) %>% as.factor()
     )
   
@@ -160,8 +154,7 @@ double_sort <- function(
         portfolio_2 = assign_portfolio(
           data = pick(everything()),
           sort_variable = {{ sort_variable_2 }},
-          n_portfolios = n_portfolios_1,
-          sort_data = pick(everything()) %>% filter(exchcd %in% c(1, 31))
+          n_portfolios = n_portfolios_1
         ) %>% as.factor()
       )
   }
@@ -220,13 +213,12 @@ double_sort_panel <- function(
     sort_variable_2,
     n_portfolios_1,
     n_portfolios_2 = n_portfolios_1,
-    sort_data = data,
     is_dependent = TRUE
 ) {
   panel %>%
     nest(.by = month, .key = "cs") %>%
     mutate(
-      portfolio_ret = map(cs, double_sort, {{ sort_variable_1 }}, {{ sort_variable_2 }}, n_portfolios_1, n_portfolios_2, sort_data, is_dependent)
+      portfolio_ret = map(cs, double_sort, {{ sort_variable_1 }}, {{ sort_variable_2 }}, n_portfolios_1, n_portfolios_2, is_dependent)
     ) %>%
     unnest(portfolio_ret) %>%
     nest(.by = c(portfolio_1, portfolio_2), .key = "ts") %>%
@@ -241,7 +233,6 @@ double_sort_panel <- function(
 
 single_sort_panel(data, size, 5)
 single_sort_panel(data, bm, 5)
-single_sort_panel(data, mom, 5)
 
 # test_cs <- data %>%
 #   filter(month == as.Date("1997-01-01")) %>%
@@ -269,7 +260,7 @@ mom_data <- data %>%
   filter(prc > 5) %>%
   select(-size_10th)
 
-single_sort_panel(mom_data, mom, 10)
+single_sort_panel(mom_data, mom, 5)
 double_sort_panel(mom_data, size, mom, 5, 5)
 double_sort_panel(mom_data, size, mom, 5, 5)
 
@@ -292,8 +283,6 @@ create_single_sort_result <- function(n_portfolio) {
   
   return(result_single_sort)
 }
-
-create_single_sort_result(5)
 
 dbWriteTable(db, "artifact_9_single_sort_5", create_single_sort_result(5), overwrite = TRUE)
 dbWriteTable(db, "artifact_9_single_sort_10", create_single_sort_result(10), overwrite = TRUE)

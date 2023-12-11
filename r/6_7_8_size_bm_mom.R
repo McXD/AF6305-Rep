@@ -65,9 +65,9 @@ roll_mom_estimation <- function(data, months, min_obs) {
     .x = data,
     .i = data$month, # index
     .period = "month", # aggregation is applied to each month
-    .f = ~ cumret(., min_obs),
+    .f = ~ cumret(., min_obs) * 100, # BEM p. 207
     .before = months - 1,
-    .complete = FALSE # ignore incomplete periods
+    .complete = FALSE # don't ignore incomplete periods, a window may miss some months
   )
 }
 
@@ -94,12 +94,12 @@ mom_monthly <- crsp_monthly %>%
   group_modify(~ mutate(., mom = roll_mom_estimation(., months = 6, min_obs = 5))) %>%
   ungroup()
 
-# Shift `mom` to t-1
+# Shift `mom` to t+2 (we skip a month)
 mom_monthly <- mom_monthly |>
   left_join(
     mom_monthly |>
       group_by(permno) |>
-      mutate(month = month %m+% months(1)) |>
+      mutate(month = month %m+% months(2)) |>
       ungroup() |>
       select(permno, month, mom_lagged = mom),
     by = c("permno", "month")
